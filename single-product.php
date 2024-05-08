@@ -102,7 +102,6 @@ get_header('shop'); ?>
     }
     ?>
 </div>
-<script src="<?php echo get_template_directory_uri(); ?>/woocommerce/cart/custom_script.js"></script>
 <script>
     jQuery(document).ready(function($) {
     $('.add-to-cart-ajax').on('click', function(e) {
@@ -121,11 +120,6 @@ get_header('shop'); ?>
                 console.log('Custom Price:', response.custom_price);
                 console.log('Custom Category:', response.custom_category); 
 
-                var productId = response.product_id;
-                var customPrice = response.custom_price;
-                var customCategory = response.custom_category; 
-
-                otherScriptFunction(productId, customPrice, customCategory); 
             },
             error: function(xhr, textStatus, errorThrown) {
                 console.log('AJAX Error:', textStatus, errorThrown);
