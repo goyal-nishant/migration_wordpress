@@ -85,6 +85,9 @@
                                                     echo wp_kses_post(apply_filters('woocommerce_cart_item_name', sprintf('<a href="%s">%s</a>', esc_url($product_permalink), $_product->get_name()), $cart_item, $cart_item_key));
                                                 }
 
+                                                echo isset($cart_item['custom_category']) ? '<br>' . esc_html($cart_item['custom_category']) : '';
+
+
                                                 do_action('woocommerce_after_cart_item_name', $cart_item, $cart_item_key);
 
                                                 // Meta data.
@@ -101,8 +104,10 @@
 
                                     <td class="product-price" data-title="<?php esc_attr_e('Price', 'woocommerce'); ?>">
                                         <?php
-                                        echo apply_filters('woocommerce_cart_item_price', WC()->cart->get_product_price($_product), $cart_item, $cart_item_key); // PHPCS: XSS ok.
-                                        ?>
+                                        //echo apply_filters('woocommerce_cart_item_price', WC()->cart->get_product_price($_product), $cart_item, $cart_item_key); // PHPCS: XSS ok.
+                                        echo isset($cart_item['custom_price']) ? wc_price($cart_item['custom_price']) : wc_price($_product->get_price());
+
+                                       ?>
                                     </td>
 
                                     <td class="product-quantity" data-title="<?php esc_attr_e('Quantity', 'woocommerce'); ?>">
@@ -119,7 +124,7 @@
                         }
                         ?>
 
-                        <?php do_action('woocommerce_cart_contents'); ?>
+                      <?php do_action('woocommerce_cart_contents'); ?>
 
                         <tr>
                             <td colspan="6" class="actions">
@@ -213,4 +218,62 @@
         </div>
     </section>
     <div id="product-info"></div>
-    <?php do_action('woocommerce_after_cart'); ?>
+<?php do_action('woocommerce_after_cart'); ?>
+
+<?php
+function display_custom_cart_items() {
+    $category_groups = array();
+
+    foreach (WC()->cart->get_cart() as $cart_item_key => $cart_item) {
+        if (isset($cart_item['custom_category'])) {
+            $category = $cart_item['custom_category'];
+        } else {
+            $category = 'Uncategorized'; 
+        }
+
+        if (!isset($category_groups[$category])) {
+            $category_groups[$category] = array();
+        }
+
+        $category_groups[$category][] = $cart_item;
+    }
+
+    ob_start();
+    
+    foreach ($category_groups as $category => $cart_items) {
+        ?>
+        <p><strong>Custom Category: <?php echo esc_html($category); ?></strong></p>
+        <ul>
+            <?php
+            foreach ($cart_items as $cart_item_key => $cart_item) {
+                $_product = apply_filters('woocommerce_cart_item_product', $cart_item['data'], $cart_item, $cart_item_key);
+
+                if ($_product && $_product->exists() && $cart_item['quantity'] > 0) {
+                    ?>
+                    <li>
+                        <?php echo apply_filters('woocommerce_cart_item_name', $_product->get_name(), $cart_item, $cart_item_key); ?>
+                        <?php
+                        if (isset($cart_item['custom_price']) && $cart_item['custom_price'] > 0) {
+                            echo '<br><strong>Custom Price:</strong> ' . wc_price($cart_item['custom_price']);
+                        } else {
+                            // If no custom price is set or it's zero, display the regular price
+                            echo '<br><strong>Regular Price:</strong> ' . wc_price($_product->get_price());
+                        }
+                        ?>
+                    </li>
+                    <?php
+                }
+            }
+            ?>
+        </ul>
+        <?php
+    }
+
+    $output = ob_get_clean();
+
+    return $output;
+}
+
+//echo display_custom_cart_items();
+
+?>
