@@ -4,36 +4,83 @@
  * transformationtechtraining functions and definitions
  *
  * @link https://developer.wordpress.org/themes/basics/theme-functions/
- *
+ *  
  * @package transformationtechtraining
  */
 
- function custom_user_registration() {
-    
-    $username = $_POST['username'];
-    $email = $_POST['email'];
+
+
+function add_to_cart_ajax_callback() {
+    error_log('AJAX Request Received');
+
+    $product_id = isset($_POST['product_id']) ? intval($_POST['product_id']) : 0;
+    $custom_price = isset($_POST['custom_price']) ? floatval($_POST['custom_price']) : 0;
+    $custom_category = isset($_POST['custom_category']) ? sanitize_text_field($_POST['custom_category']) : '';
+
+    if ($product_id > 0) {
+        WC()->cart->add_to_cart($product_id, 1, 0, array(), array('custom_price' => $custom_price));
+
+        $response = array(
+            'status' => 'success',
+            'message' => 'Product added to cart successfully',
+            'product_id' => $product_id,
+            'custom_price' => $custom_price,
+            'custom_category' => $custom_category 
+        );
+    } else {
+        $response = array(
+            'status' => 'error',
+            'message' => 'Invalid product ID'
+        );
+    }
+
+    header('Content-Type: application/json'); 
+    echo json_encode($response); 
+
+    wp_die();
+}
+
+add_action('wp_ajax_add_to_cart_ajax', 'add_to_cart_ajax_callback');
+add_action('wp_ajax_nopriv_add_to_cart_ajax', 'add_to_cart_ajax_callback');
+
+add_filter('woocommerce_cart_product_price', 'custom_override_cart_product_price', 10, 2);
+
+function custom_override_cart_product_price( $cart_item) {
+    $new_price = 100;
+    return wc_price($new_price); 
+}
+
+
+add_action('admin_post_nopriv_custom_register_user', 'custom_register_user');
+add_action('admin_post_custom_register_user', 'custom_register_user');
+
+function custom_register_user() {
+    $username = sanitize_user($_POST['username']);
+    $email = sanitize_email($_POST['email']);
     $password = $_POST['password'];
     $role = $_POST['role'];
 
-    $userdata = array(
-        'user_login'  =>  $username,
-        'user_email'  =>  $email,
-        'user_pass'   =>  $password,
-        'role'        =>  $role,
-    );
+    $user_id = wp_create_user($username, $password, $email);
 
-    $user_id = wp_insert_user( $userdata );
-
-    if ( ! is_wp_error( $user_id ) ) {
-        // Registration successful, redirect to a thank you page
-        wp_redirect( home_url( '/thank-you/' ) );
+    if (is_wp_error($user_id)) {
+        wp_redirect(home_url('/register?registration_failed=true'));
         exit;
-    } else {
-        // Registration failed, display error message
-        echo 'Registration failed. Please try again.';
     }
+
+    $user = new WP_User($user_id);
+    $user->set_role($role);
+
+    wp_redirect(home_url('/register?registration_success=true'));
+    exit;
 }
-add_action( 'admin_post_nopriv_custom_user_registration', 'custom_user_registration' );
+
+
+ // Redirect users to the dashboard after login
+function custom_login_redirect($redirect_to, $request, $user) {
+    // Always redirect users to the dashboard after login
+    return admin_url();
+}
+add_filter('login_redirect', 'custom_login_redirect', 10, 3);
 
 if (!defined('_S_VERSION')) {
     // Replace the version number of the theme on each release.
@@ -209,6 +256,8 @@ function transformationtechtraining_scripts()
     wp_enqueue_script('owl-carousel-min-js', get_stylesheet_directory_uri() . '/js/owl.carousel.min.js', array('jquery'), 2);
     wp_enqueue_script('transformationtechtraining-custom-script', get_template_directory_uri() . '/js/custom-script.js', array(), 3);
     wp_enqueue_script('transformationtechtraining-navigation', get_template_directory_uri() . '/js/navigation.js', array(), _S_VERSION, true);
+    wp_enqueue_style('stylesheet-name', get_stylesheet_directory_uri() . '/custom_registration_page.css', array(), '1.0.0', 'all');
+
 
     if (is_singular() && comments_open() && get_option('thread_comments')) {
         wp_enqueue_script('comment-reply');
@@ -556,8 +605,11 @@ function bbloomer_add_cart_quantity_plus_minus()
    ");
 }
 
+// $args = array(
+//     'api_key' => 'your_default_api_key',
+// );
 
-//apply_filters('acf/fields/google_map/api', $args);
+apply_filters('acf/fields/google_map/api', $args);
 
 
 
