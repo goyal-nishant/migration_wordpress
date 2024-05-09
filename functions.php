@@ -9,7 +9,60 @@
  */
 
 
+ //order summary in cart page
+ add_filter( 'woocommerce_cart_subtotal', 'custom_cart_subtotal', 10, 3 );
+ add_filter( 'woocommerce_cart_totals_order_total_html', 'custom_order_total', 10, 1 );
+ 
+ 
+ function custom_cart_subtotal( $subtotal, $compound, $cart ) {
+     $category_groups = array();
+     $total = 0;
+ 
+     // Group cart items by category
+     foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+         if ( isset( $cart_item['custom_category'] ) ) {
+             $category = $cart_item['custom_category'];
+         } else {
+             $category = 'Uncategorized'; // Default category if custom category is not set
+         }
+ 
+         if ( ! isset( $category_groups[ $category ] ) ) {
+             $category_groups[ $category ] = array();
+         }
+ 
+         $category_groups[ $category ][] = $cart_item;
+     }
+ 
+     // Calculate total based on custom prices
+     foreach ( $category_groups as $category => $cart_items ) {
+         foreach ( $cart_items as $cart_item_key => $cart_item ) {
+             $custom_price = isset( $cart_item['custom_price'] ) ? $cart_item['custom_price'] : $cart_item['data']->get_price();
+             $total += $custom_price * $cart_item['quantity'];
+         }
+     }
+ 
+     // Format and return custom subtotal
+     return wc_price( $total );
+ }
+ 
+ function custom_order_total( $order_total_html ) {
+     // Get the cart instance
+     $cart = WC()->cart;
+ 
+     // Calculate the total based on custom prices
+     $total = 0;
+     foreach ( $cart->get_cart() as $cart_item_key => $cart_item ) {
+         $custom_price = isset( $cart_item['custom_price'] ) ? $cart_item['custom_price'] : $cart_item['data']->get_price();
+         $total += $custom_price * $cart_item['quantity'];
+     }
+ 
+     // Format and return custom order total HTML
+     return sprintf( '<strong>%s</strong> %s', __( 'Total:', 'woocommerce' ), wc_price( $total ) );
+ }
+ 
 
+ 
+//use ajax for add to cart button
 function add_to_cart_ajax_callback() {
     error_log('AJAX Request Received');
 
@@ -18,7 +71,9 @@ function add_to_cart_ajax_callback() {
     $custom_category = isset($_POST['custom_category']) ? sanitize_text_field($_POST['custom_category']) : '';
 
     if ($product_id > 0) {
-        WC()->cart->add_to_cart($product_id, 1, 0, array(), array('custom_price' => $custom_price));
+        $cart_item_data = array('custom_price' => $custom_price, 'custom_category' => $custom_category);
+
+        WC()->cart->add_to_cart($product_id, 1, 0, array(), $cart_item_data);
 
         $response = array(
             'status' => 'success',
@@ -43,12 +98,6 @@ function add_to_cart_ajax_callback() {
 add_action('wp_ajax_add_to_cart_ajax', 'add_to_cart_ajax_callback');
 add_action('wp_ajax_nopriv_add_to_cart_ajax', 'add_to_cart_ajax_callback');
 
-add_filter('woocommerce_cart_product_price', 'custom_override_cart_product_price', 10, 2);
-
-function custom_override_cart_product_price( $cart_item) {
-    $new_price = 100;
-    return wc_price($new_price); 
-}
 
 
 add_action('admin_post_nopriv_custom_register_user', 'custom_register_user');
