@@ -60,8 +60,45 @@
      return sprintf( '<strong>%s</strong> %s', __( 'Total:', 'woocommerce' ), wc_price( $total ) );
  }
  
+// Display category below product name
+add_filter('woocommerce_checkout_cart_item_quantity', 'display_category_on_checkout', 10, 3);
 
- 
+function display_category_on_checkout($product_quantity, $cart_item, $cart_item_key) {
+    if (isset($cart_item['custom_category'])) {
+        $category = $cart_item['custom_category'];
+        return $product_quantity ."-" . esc_html($category);
+    }
+    return $product_quantity;
+}
+
+
+
+// Change default price to custom price in subtotal
+add_filter('woocommerce_checkout_cart_item_subtotal', 'change_to_custom_price_in_subtotal', 10, 3);
+
+function change_to_custom_price_in_subtotal($product_subtotal, $cart_item, $cart_item_key) {
+    if (isset($cart_item['custom_price']) && $cart_item['custom_price'] > 0) {
+        return wc_price($cart_item['custom_price'] * $cart_item['quantity']);
+    }
+    return $product_subtotal;
+}
+
+
+add_action('woocommerce_before_calculate_totals', 'update_cart_item_price', 10, 1);
+
+function update_cart_item_price($cart) {
+    if (is_admin() && !defined('DOING_AJAX')) {
+        return;
+    }
+
+    foreach ($cart->get_cart() as $cart_item_key => $cart_item) {
+        // Check if custom price is set for the cart item
+        if (isset($cart_item['custom_price'])) {
+            $cart_item['data']->set_price($cart_item['custom_price']);
+        }
+    }
+}
+
 //use ajax for add to cart button
 function add_to_cart_ajax_callback() {
     error_log('AJAX Request Received');
