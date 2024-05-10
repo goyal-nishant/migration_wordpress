@@ -1,5 +1,7 @@
 <?php
 
+use PhpParser\Node\Stmt\Echo_;
+
 /**
  * transformationtechtraining functions and definitions
  *
@@ -8,6 +10,92 @@
  * @package transformationtechtraining
  */
 
+
+ // Add custom column header
+function custom_column_header( $columns ) {
+    $columns['custom_column'] = ' Price variations';
+    return $columns;
+}
+add_filter( 'manage_product_posts_columns', 'custom_column_header', 10 );
+
+// Populate custom column
+function custom_column_content( $column, $post_id ) {
+    if ( $column == 'custom_column' ) {
+        // Retrieve custom field data
+        $repeater_fields = get_field( 'custom_price_repeater', $post_id );
+
+        if ( $repeater_fields ) {
+            foreach ( $repeater_fields as $index => $repeater_field ) {
+                $category = $repeater_field['custom_category'];
+                $price = $repeater_field['custom_price'];
+
+                // echo '<br><strong>Category:</strong> ' . $category;
+                // echo '<br>Price: ' . $price;
+                echo $category . "  $" . $price . "<br>";
+            }
+        }
+    }
+}
+add_action( 'manage_product_posts_custom_column', 'custom_column_content', 10, 2 );
+
+// function custom_column_content( $column, $post_id ) {
+//     if ( $column == 'custom_column' ) {
+//         global $wpdb;
+        
+//         // Prepare SQL query
+//         $sql = $wpdb->prepare("
+//             SELECT meta_key, meta_value
+//             FROM $wpdb->postmeta
+//             WHERE post_id = %d
+//             AND (meta_key LIKE %s OR meta_key LIKE %s)",
+//             $post_id,
+//             'custom_price_repeater_%_custom_category',
+//             'custom_price_repeater_%_custom_price'
+//         );
+
+//         // Execute the query
+//         $results = $wpdb->get_results( $sql );
+
+//         // Process the results
+//         if ( ! empty( $results ) ) {
+//             foreach ( $results as $result ) {
+//                 if ( strpos( $result->meta_key, 'custom_category' ) !== false ) {
+//                     echo '<br>Category: ' . $result->meta_value;
+//                 } elseif ( strpos( $result->meta_key, 'custom_price' ) !== false ) {
+//                     echo '<br>Price: ' . $result->meta_value;
+//                 }
+//             }
+//         }
+//     }
+// }
+// add_action( 'manage_product_posts_custom_column', 'custom_column_content', 10, 2 );
+
+
+ // Add custom category name below product name in cart
+add_filter('woocommerce_cart_item_name', 'custom_cart_item_name_display', 10, 3);
+function custom_cart_item_name_display($product_name, $cart_item, $cart_item_key) {
+    // Check if custom category is set
+    if (isset($cart_item['custom_category'])) {
+        $custom_category = $cart_item['custom_category'];
+        // Display custom category name below product name
+        $product_name .= '<br><small>' . $custom_category . '</small>';
+    }
+    return $product_name;
+}
+
+
+ 
+ //replace the default price by our custom price
+ function replace_default_price_with_custom($product_price, $cart_item, $cart_item_key ) {
+
+    $custom_price = isset($cart_item['custom_price']) ? (float)$cart_item['custom_price'] : null;
+    
+    if (!empty($custom_price)) {
+        $product_price = wc_price($custom_price);         
+    }
+    return  $product_price;
+}
+add_filter('woocommerce_cart_item_price', 'replace_default_price_with_custom', 10, 3);
 
  //order summary in cart page
  add_filter( 'woocommerce_cart_subtotal', 'custom_cart_subtotal', 10, 3 );
@@ -66,7 +154,7 @@ add_filter('woocommerce_checkout_cart_item_quantity', 'display_category_on_check
 function display_category_on_checkout($product_quantity, $cart_item, $cart_item_key) {
     if (isset($cart_item['custom_category'])) {
         $category = $cart_item['custom_category'];
-        return $product_quantity ."-" . esc_html($category);
+    //    return $product_quantity ."-" . esc_html($category);
     }
     return $product_quantity;
 }
@@ -691,9 +779,9 @@ function bbloomer_add_cart_quantity_plus_minus()
    ");
 }
 
-// $args = array(
-//     'api_key' => 'your_default_api_key',
-// );
+$args = array(
+    'api_key' => 'your_default_api_key',
+);
 
 apply_filters('acf/fields/google_map/api', $args);
 
