@@ -11,6 +11,7 @@ use PhpParser\Node\Stmt\Echo_;
  */
 
 
+
  // Add custom column header
 function custom_column_header( $columns ) {
     $columns['custom_column'] = ' Price variations';
@@ -28,9 +29,6 @@ function custom_column_content( $column, $post_id ) {
             foreach ( $repeater_fields as $index => $repeater_field ) {
                 $category = $repeater_field['custom_category'];
                 $price = $repeater_field['custom_price'];
-
-                // echo '<br><strong>Category:</strong> ' . $category;
-                // echo '<br>Price: ' . $price;
                 echo $category . "  $" . $price . "<br>";
             }
         }
@@ -38,37 +36,6 @@ function custom_column_content( $column, $post_id ) {
 }
 add_action( 'manage_product_posts_custom_column', 'custom_column_content', 10, 2 );
 
-// function custom_column_content( $column, $post_id ) {
-//     if ( $column == 'custom_column' ) {
-//         global $wpdb;
-        
-//         // Prepare SQL query
-//         $sql = $wpdb->prepare("
-//             SELECT meta_key, meta_value
-//             FROM $wpdb->postmeta
-//             WHERE post_id = %d
-//             AND (meta_key LIKE %s OR meta_key LIKE %s)",
-//             $post_id,
-//             'custom_price_repeater_%_custom_category',
-//             'custom_price_repeater_%_custom_price'
-//         );
-
-//         // Execute the query
-//         $results = $wpdb->get_results( $sql );
-
-//         // Process the results
-//         if ( ! empty( $results ) ) {
-//             foreach ( $results as $result ) {
-//                 if ( strpos( $result->meta_key, 'custom_category' ) !== false ) {
-//                     echo '<br>Category: ' . $result->meta_value;
-//                 } elseif ( strpos( $result->meta_key, 'custom_price' ) !== false ) {
-//                     echo '<br>Price: ' . $result->meta_value;
-//                 }
-//             }
-//         }
-//     }
-// }
-// add_action( 'manage_product_posts_custom_column', 'custom_column_content', 10, 2 );
 
 
  // Add custom category name below product name in cart
