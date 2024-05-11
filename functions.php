@@ -10,6 +10,45 @@ use PhpParser\Node\Stmt\Echo_;
  * @package transformationtechtraining
  */
 
+ add_action('woocommerce_checkout_create_order_line_item', 'save_custom_category_to_order', 10, 4);
+
+function save_custom_category_to_order($item, $cart_item_key, $values, $order) {
+    // Check if custom category is set in the checkout page data
+    if (isset($values['custom_category'])) {
+        $custom_category = $values['custom_category'];
+        
+        // Check if the item already has a custom category saved
+        $existing_custom_category = $item->get_meta('Custom Category');
+
+        // If an existing custom category is found, update it; otherwise, add new custom category
+        if ($existing_custom_category) {
+            $item->update_meta_data('Custom Category', $custom_category);
+        } else {
+            $item->add_meta_data('Custom Category', $custom_category, true);
+        }
+        
+        // Save the changes to the database
+        $item->save();
+    }
+}
+
+
+
+add_action('woocommerce_order_item_meta_end', 'display_custom_category_on_order_received', 10, 4);
+
+function display_custom_category_on_order_received($item_id, $item, $order, $plain_text = false) {
+    // Get the custom category associated with the item
+    $custom_category = $item->get_meta('Custom Category');
+
+    // Check if a custom category is found
+    if ($custom_category) {
+        // Display the label for custom category and its value
+        echo '<br><small><strong>' . __('Custom Category') . ':</strong> ' . $custom_category . '</small>';
+    }
+}
+
+
+
 
 
  // Add custom column header
@@ -153,6 +192,33 @@ function update_cart_item_price($cart) {
         }
     }
 }
+
+
+// Hook into WooCommerce order creation process
+add_action('woocommerce_checkout_create_order', 'save_custom_fields_to_order');
+
+function save_custom_fields_to_order($order) {
+    foreach ($order->get_items() as $item_id => $item) {
+        $product_id = $item->get_product_id();
+        
+        $price_repeater = get_field('custom_price_repeater', $product_id);
+        
+        if (!empty($price_repeater)) {
+            $custom_categories = array(); 
+            foreach ($price_repeater as $price_item) {
+                if (isset($price_item['custom_category'])) {
+                    $custom_categories[] = $price_item['custom_category']; 
+                }
+            }
+            if (!empty($custom_categories)) {
+                foreach ($custom_categories as $category) {
+                    $item->add_meta_data('custom_category', $category);
+                }
+            }
+        }
+    }
+}
+
 
 //use ajax for add to cart button
 function add_to_cart_ajax_callback() {
