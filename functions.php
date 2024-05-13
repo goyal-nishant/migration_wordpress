@@ -2,6 +2,8 @@
 
 use PhpParser\Node\Stmt\Echo_;
 
+use function WooCommerce\PayPalCommerce\OrderTracking\tr;
+
 /**
  * transformationtechtraining functions and definitions
  *
@@ -10,46 +12,45 @@ use PhpParser\Node\Stmt\Echo_;
  * @package transformationtechtraining
  */
 
+ 
+
+ //Save custom data into order_item table while place order on checkout page
  add_action('woocommerce_checkout_create_order_line_item', 'save_custom_category_to_order', 10, 4);
 
-function save_custom_category_to_order($item, $cart_item_key, $values, $order) {
-    // Check if custom category is set in the checkout page data
-    if (isset($values['custom_category'])) {
-        $custom_category = $values['custom_category'];
-        
-        // Check if the item already has a custom category saved
-        $existing_custom_category = $item->get_meta('Custom Category');
-
-        // If an existing custom category is found, update it; otherwise, add new custom category
-        if ($existing_custom_category) {
-            $item->update_meta_data('Custom Category', $custom_category);
-        } else {
-            $item->add_meta_data('Custom Category', $custom_category, true);
-        }
-        
-        // Save the changes to the database
-        $item->save();
-    }
-}
+ function save_custom_category_to_order($item, $cart_item_key, $values, $order) {
+     // Check if custom category is set in the checkout page data    
+     $custom_category = $values['custom_category'];
+     $item->add_meta_data('Custom Category', $custom_category, true);
+ }
 
 
-
-add_action('woocommerce_order_item_meta_end', 'display_custom_category_on_order_received', 10, 4);
-
-function display_custom_category_on_order_received($item_id, $item, $order, $plain_text = false) {
-    // Get the custom category associated with the item
+ // Override wc_display_item_meta function using a filter hook
+function custom_wc_display_item_meta( $html, $item, $args ) {
+    // Check if the meta data we want to display exists
     $custom_category = $item->get_meta('Custom Category');
 
-    // Check if a custom category is found
-    if ($custom_category) {
-        // Display the label for custom category and its value
-        echo '<br><small><strong>' . __('Custom Category') . ':</strong> ' . $custom_category . '</small>';
+    // If custom category exists, display it instead of the default meta data
+    if ( ! empty( $custom_category ) ) {
+         $html = '<ul class="custom-wc-item-meta"><li>' . 
+                wp_kses_post( $custom_category ) . '</li></ul>';
     }
+    return $html;
 }
 
 
+// Hook into 'woocommerce_display_item_meta' filter
+add_filter( 'woocommerce_display_item_meta', 'custom_wc_display_item_meta', 10, 3 );
+ // Display custom meta key on backend orders
+ add_filter('woocommerce_order_item_display_meta_key', 'filter_order_item_display_meta_key', 10, 4);
 
-
+function filter_order_item_display_meta_key($display_key, $meta, $item) {
+    // Check if the meta key is 'Custom Category'
+    if ($meta->key === 'Custom Category') {
+        // Return null to prevent displaying the meta key and colon separator
+        return " ";
+    }
+    return $display_key;
+}
 
  // Add custom column header
 function custom_column_header( $columns ) {
@@ -75,9 +76,7 @@ function custom_column_content( $column, $post_id ) {
 }
 add_action( 'manage_product_posts_custom_column', 'custom_column_content', 10, 2 );
 
-
-
- // Add custom category name below product name in cart
+// Add custom category name below product name in cart
 add_filter('woocommerce_cart_item_name', 'custom_cart_item_name_display', 10, 3);
 function custom_cart_item_name_display($product_name, $cart_item, $cart_item_key) {
     // Check if custom category is set
@@ -89,8 +88,6 @@ function custom_cart_item_name_display($product_name, $cart_item, $cart_item_key
     return $product_name;
 }
 
-
- 
  //replace the default price by our custom price
  function replace_default_price_with_custom($product_price, $cart_item, $cart_item_key ) {
 
@@ -160,7 +157,7 @@ add_filter('woocommerce_checkout_cart_item_quantity', 'display_category_on_check
 function display_category_on_checkout($product_quantity, $cart_item, $cart_item_key) {
     if (isset($cart_item['custom_category'])) {
         $category = $cart_item['custom_category'];
-    //    return $product_quantity ."-" . esc_html($category);
+    // return $product_quantity ."-" . esc_html($category);
     }
     return $product_quantity;
 }
@@ -189,32 +186,6 @@ function update_cart_item_price($cart) {
         // Check if custom price is set for the cart item
         if (isset($cart_item['custom_price'])) {
             $cart_item['data']->set_price($cart_item['custom_price']);
-        }
-    }
-}
-
-
-// Hook into WooCommerce order creation process
-add_action('woocommerce_checkout_create_order', 'save_custom_fields_to_order');
-
-function save_custom_fields_to_order($order) {
-    foreach ($order->get_items() as $item_id => $item) {
-        $product_id = $item->get_product_id();
-        
-        $price_repeater = get_field('custom_price_repeater', $product_id);
-        
-        if (!empty($price_repeater)) {
-            $custom_categories = array(); 
-            foreach ($price_repeater as $price_item) {
-                if (isset($price_item['custom_category'])) {
-                    $custom_categories[] = $price_item['custom_category']; 
-                }
-            }
-            if (!empty($custom_categories)) {
-                foreach ($custom_categories as $category) {
-                    $item->add_meta_data('custom_category', $category);
-                }
-            }
         }
     }
 }
