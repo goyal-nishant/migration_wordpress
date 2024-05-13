@@ -18,18 +18,16 @@ use function WooCommerce\PayPalCommerce\OrderTracking\tr;
  add_action('woocommerce_checkout_create_order_line_item', 'save_custom_category_to_order', 10, 4);
 
  function save_custom_category_to_order($item, $cart_item_key, $values, $order) {
-     // Check if custom category is set in the checkout page data    
      $custom_category = $values['custom_category'];
      $item->add_meta_data('Custom Category', $custom_category, true);
  }
 
-
  // Override wc_display_item_meta function using a filter hook
-function custom_wc_display_item_meta( $html, $item, $args ) {
-    // Check if the meta data we want to display exists
+// Hook into 'woocommerce_display_item_meta' filter in front end
+ add_filter( 'woocommerce_display_item_meta', 'custom_wc_display_item_meta', 10, 3 );
+ function custom_wc_display_item_meta( $html, $item, $args ) {
     $custom_category = $item->get_meta('Custom Category');
 
-    // If custom category exists, display it instead of the default meta data
     if ( ! empty( $custom_category ) ) {
          $html = '<ul class="custom-wc-item-meta"><li>' . 
                 wp_kses_post( $custom_category ) . '</li></ul>';
@@ -37,16 +35,11 @@ function custom_wc_display_item_meta( $html, $item, $args ) {
     return $html;
 }
 
-
-// Hook into 'woocommerce_display_item_meta' filter
-add_filter( 'woocommerce_display_item_meta', 'custom_wc_display_item_meta', 10, 3 );
  // Display custom meta key on backend orders
  add_filter('woocommerce_order_item_display_meta_key', 'filter_order_item_display_meta_key', 10, 4);
 
 function filter_order_item_display_meta_key($display_key, $meta, $item) {
-    // Check if the meta key is 'Custom Category'
     if ($meta->key === 'Custom Category') {
-        // Return null to prevent displaying the meta key and colon separator
         return " ";
     }
     return $display_key;
@@ -62,7 +55,6 @@ add_filter( 'manage_product_posts_columns', 'custom_column_header', 10 );
 // Populate custom column
 function custom_column_content( $column, $post_id ) {
     if ( $column == 'custom_column' ) {
-        // Retrieve custom field data
         $repeater_fields = get_field( 'custom_price_repeater', $post_id );
 
         if ( $repeater_fields ) {
